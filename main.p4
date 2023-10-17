@@ -13,6 +13,46 @@ parser Parse(packet_in packet,
             inout metadata meta,
             inout standard_metadata_t standard_metadata) {
     state start {
+        transition pasrse_ethernet;
+    }
+
+    state pasrse_ethernet {
+        packet.extract(hdr.ethernet);
+
+        transition select(hdr.ethernet.etherType) {
+            EtherType.IPV4: parse_ipv4;
+            default: accept;
+        }
+    }
+
+    state parse_ipv4 {
+        packet.extract(hdr.ipv4);
+        transition select(hdr.ipv4.protocol) {
+            IPv4Protocols.TCP: parse_tcp;
+            IPv4Protocols.UDP: parse_udp;
+            default: accept;
+        }
+    }
+
+    state parse_tcp {
+        transition accept;
+    }
+
+    state parse_udp {
+        packet.extract(hdr.udp);
+        transition parse_fractos;
+    }
+
+    state parse_fractos {
+        packet.extract(hdr.request);
+        transition select(hdr.request.cmd) {
+            fractos_cmd_type.Nop: parse_fractos_nop;
+            default: accept;
+        }
+    }
+
+    state parse_fractos_nop {
+        packet.extract(hdr.request.request);
         transition accept;
     }
 }

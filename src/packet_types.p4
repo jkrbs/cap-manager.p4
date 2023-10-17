@@ -1,9 +1,4 @@
 /* -*- P4_16 -*- */
-header ethernet_t {
-    bit<48> dstAddr;
-    bit<48> srcAddr;
-    EtherType etherType;
-}
 
 enum bit<16> EtherType {
   VLAN      = 0x8100,
@@ -11,6 +6,17 @@ enum bit<16> EtherType {
   MPLS      = 0x8847,
   IPV4      = 0x0800,
   IPV6      = 0x86dd
+}
+
+enum bit<8> IPv4Protocols {
+    TCP = 6,
+    UDP = 17
+}
+
+header ethernet_t {
+    bit<48> dstAddr;
+    bit<48> srcAddr;
+    EtherType etherType;
 }
 
 header ipv4_t {
@@ -42,6 +48,13 @@ header tcp_t {
     bit<16> urgentPtr;
 }
 
+header udp_t {
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<16> len;
+    bit<16> checksum;
+}
+
 header fractos_header_t {
     bit<32> size;
     bit<32> cmd;
@@ -49,23 +62,43 @@ header fractos_header_t {
 }
 
 header fractos_nop_request_t {
-    bit<64> cmd;
-    fractos_header_t hdr;
     bit<64> info;
 }
 
 header fractos_request_create_header_t {
-   bit<64> cmd;
 }
 
-header_union fractos_requests_t {
-    request_create fractos_request_create_header_t;
-    nop fractos_nop_request_t;
+header_union fractos_requests_types_t {
+    fractos_request_create_header_t request_create ;
+    fractos_nop_request_t nop;
+}
+
+
+enum bit<64> fractos_cmd_type {
+    Nop = 0,
+    CapGetInfo = 1,
+    CapIsSame = 2,
+    CapDiminish = 3,
+    /* Gap in OPCode Numbers Caused by Packet Types Unsupported by this implementation */
+    CapClose = 5,
+    CapRevoke = 6,
+    /* Gap in OPCode Numbers Caused by Packet Types Unsupported by this implementation */
+    RequestCreate = 13,
+    RequestInvoke = 14,
+    /* Gap in OPCode Numbers Caused by Packet Types Unsupported by this implementation */
+    RequestReceive = 16,
+    /* Gap in OPCode Numbers Caused by Packet Types Unsupported by this implementation */
+    None = 32 // None is used as default value
+}
+
+struct fractos_request_t {
+    fractos_cmd_type cmd;
+    fractos_requests_types_t request;
 }
 
 struct headers {
     ethernet_t ethernet;
     ipv4_t ipv4;
-    tcp_t tcp;
-    fractos_requests_t request;
+    udp_t udp;
+    fractos_request_t request;
 }
