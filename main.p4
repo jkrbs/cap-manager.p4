@@ -40,21 +40,25 @@ parser Parse(packet_in packet,
 
     state parse_udp {
         packet.extract(hdr.udp);
-        transition parse_fractos;
+        transition parse_fractos_common_header;
     }
 
-    state parse_fractos {
-        packet.extract(hdr.request);
-        transition select(hdr.request.cmd) {
+    state parse_fractos_common_header {
+        packet.extract(hdr.fractos_header);
+        transition select(hdr.fractos_header.cmd) {
             fractos_cmd_type.Nop: parse_fractos_nop;
             default: accept;
         }
     }
 
     state parse_fractos_nop {
-        packet.extract(hdr.request.request);
+        packet.extract(hdr.request.nop);
         transition accept;
     }
+}
+
+control ChecksumVerification(inout headers hdr, inout metadata meta) {
+    apply {}
 }
 
 control deparse(packet_out packet, in headers h) {
@@ -121,12 +125,12 @@ control egres(inout headers hdr,
     }
 
     apply {
-        drop.apply();
+        
     }
 }
 
 V1Switch(
-    Parse().
+    Parse(),
     ChecksumVerification(),
     ing(),
     egres(),

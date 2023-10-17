@@ -68,8 +68,8 @@ header fractos_nop_request_t {
 header fractos_request_create_header_t {
 }
 
-header_union fractos_requests_types_t {
-    fractos_request_create_header_t request_create ;
+header_union fractos_request_types_t {
+    fractos_request_create_header_t request_create;
     fractos_nop_request_t nop;
 }
 
@@ -91,14 +91,14 @@ enum bit<64> fractos_cmd_type {
     None = 32 // None is used as default value
 }
 
-struct fractos_request_t {
+header fractos_common_header_t {
     fractos_cmd_type cmd;
-    fractos_requests_types_t request;
 }
 
 struct headers {
     ethernet_t ethernet;
     ipv4_t ipv4;
     udp_t udp;
-    fractos_request_t request;
+    fractos_common_header_t fractos_header;
+    fractos_request_types_t request;
 }
