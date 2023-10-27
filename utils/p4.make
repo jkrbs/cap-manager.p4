@@ -63,6 +63,16 @@ endif
 # We create a run dir to get all logs into it.
 .PHONY: veth_setup veth_teardown build model switchd bfshell \
 	bfrt_setup_i bfrt_setup clean clean_logs clean_build vis tests tests_list test
+# Build the P4
+build:
+	echo "Bulding ${P4_NAME} from ${P4_PATH} at ${BUILD_DIR} with ${ADDITIONAL_CMAKE_ARGUMENTS}"
+	rm -rf ${BUILD_DIR}; mkdir -p ${BUILD_DIR};
+	cd ${BUILD_DIR}
+	cmake ${SDE}/p4studio/ -DCMAKE_INSTALL_PREFIX=${SDE_INSTALL} -DCMAKE_MODULE_PATH=${SDE}/cmake -DP4_NAME=${P4_NAME} -DP4_PATH=${P4_PATH} -DP4_LANG=${P4_LANG} ${ADDITIONAL_CMAKE_ARGUMENTS}
+	make ${P4_NAME}
+	make install
+	echo "SUCCESS!"
+
 
 # Veth setup and teardown must be done at the start
 veth_setup:
@@ -71,16 +81,6 @@ veth_teardown:
 	sudo ${SDE_INSTALL}/bin/veth_teardown.sh
 
 P4_LANG ?= p4-16
-
-# Build the P4
-build:
-	echo "Bulding ${P4_NAME} from ${P4_PATH} at ${BUILD_DIR} with ${ADDITIONAL_CMAKE_ARGUMENTS}"
-	rm -rf ${BUILD_DIR}; mkdir -p ${BUILD_DIR}; 
-	cd ${BUILD_DIR} && \
-		cmake ${SDE}/p4studio/ -DCMAKE_INSTALL_PREFIX=${SDE_INSTALL} -DCMAKE_MODULE_PATH=${SDE}/cmake \
-    	  	-DP4_NAME=${P4_NAME} -DP4_PATH=${P4_PATH} -DP4_LANG=${P4_LANG} ${ADDITIONAL_CMAKE_ARGUMENTS} && \
-		make ${P4_NAME} && make install
-	echo "SUCCESS!"
 
 # Run the P4
 model:
