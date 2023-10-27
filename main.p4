@@ -124,8 +124,18 @@ control egres(inout headers hdr,
         mark_to_drop(standard_metadata);
     }
 
+    table egress_tab {
+        key =  { 
+            hdr.ipv4.dstAddr : lpm;
+        }
+        actions = {
+            drop;
+        }
+        size = 1024;
+    }
+
     apply {
-        
+      egress_tab.apply();  
     }
 }
 
