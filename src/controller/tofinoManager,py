@@ -1,0 +1,45 @@
+
+#!/usr/bin/python
+import pprint
+import os
+import sys
+sys.path.append(f"{os.environ['SDE_INSTALL']}/lib/python3.10/site-packages/tofino")
+
+import bfrt_grpc.client as gc
+
+
+# Initialization Code is copied from
+# https://github.com/nsg-ethz/ACC-Turbo/blob/86869689a511567be5b42b4e556f3f6dc53f14be/tofino/python_controller/core.py
+class TofinoManager():
+    def __init__(self, client_id=0, p4_name=None, grpc_addr='localhost:50052'):
+        try:
+            self.setup_grpc(client_id, p4_name, grpc_addr)
+        except Exception as e:
+            print("Error init: {}".format(e))
+
+    def setup_grpc(self, client_id, p4_name, grpc_addr):
+        self.client_id = client_id
+        self.dev      = 0
+        self.dev_tgt  = gc.Target(self.dev, pipe_id=0xFFFF)
+        self.bfrt_info = None
+
+        self.interface = gc.ClientInterface(grpc_addr, client_id=client_id,
+                device_id=self.dev, notifications=None)
+
+        if not p4_name:
+            self.bfrt_info = self.interface.bfrt_info_get()
+            p4_name = self.bfrt_info.p4_name_get()
+
+        self.interface.bind_pipeline_config(p4_name)
+        self.p4_name = p4_name
+
+        print("    Connected to Device: {}, Program: {}, ClientId: {}".format(
+            self.dev, self.p4_name, self.client_id))
+
+    def get_table_names(self) -> [str]:
+        return self.bfrt_info.table_dict.keys()
+
+
+if __name__ == "__main__":
+    tm = TofinoManager()
+    pprint(tm.get_table_names())
