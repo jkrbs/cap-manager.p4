@@ -2,10 +2,15 @@
 .idea
 *.log
 tmp/
-
+model_*
 Makefile
 CMake*
 *~
 \#*
 *cmake*
 scratchpad.p4
+cap-manager
+bf_*
+target
+__pycache__
+*.pcap
