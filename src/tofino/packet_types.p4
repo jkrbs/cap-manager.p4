@@ -63,25 +63,25 @@ header udp_t {
 }
 
 enum bit<32> fractos_cmd_type {
-        Nop = 0,
-        CapGetInfo = 1,
-        CapIsSame = 2,
-        CapDiminish = 3,
+        Nop = 0x0,
+        CapGetInfo = 0x01000000,
+        CapIsSame = 0x02000000,
+        CapDiminish = 0x03000000,
         /* Gap in OPCode Numbers Caused by Packet Types Unsupported by this implementation */
-        CapClose = 5,
-        CapRevoke = 6,
-        CapInvalid = 7,
+        CapClose = 0x05000000,
+        CapRevoke = 0x06000000,
+        CapInvalid = 0x07000000,
         /* Gap in OPCode Numbers Caused by Packet Types Unsupported by this implementation */
-        RequestCreate = 13,
-        RequestInvoke = 14,
+        RequestCreate = 0x0d000000,
+        RequestInvoke = 0x0e000000,
         /* Gap in OPCode Numbers Caused by Packet Types Unsupported by this implementation */
-        RequestReceive = 16,
-        RequestResponse = 17,
+        RequestReceive = 0x10000000,
+        RequestResponse = 0x11000000,
         /* Gap in OPCode Numbers Caused by Packet Types Unsupported by this implementation */
-        None = 32, // None is used as default value
+        None = 0x20000000, // None is used as default value
 
         //P4 Implementation specific OP Codes
-        InsertCap = 64
+        InsertCap = 0x40000000
 }
 
 
