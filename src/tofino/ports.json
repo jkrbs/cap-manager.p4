@@ -9,6 +9,11 @@
             "device_port":9,
             "veth1":3,
             "veth2":4
+        },
+        {
+            "device_port": 64,
+            "veth1": 9,
+            "veth2": 10
         }
     ]
 }
