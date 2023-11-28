@@ -1,10 +1,17 @@
 #include <core.p4>
 #include <tna.p4>
 #include "packet_types.p4"
-
+#include "mirror.p4"
 
 struct ingress_metadata_t {
     bit<1> drop;
+    header_type_t  mirror_header_type;
+    header_info_t  mirror_header_info;
+    PortId_t       ingress_port;
+    MirrorId_t     mirror_session;
+    bit<48>        ingress_mac_tstamp;
+    bit<48>        ingress_global_tstamp;
+    bit<1>         ipv4_csum_err;
 }
 
 parser IngressParser(packet_in      pkt,
@@ -100,6 +107,8 @@ parser IngressParser(packet_in      pkt,
     }
 }
 
+#define CPU_MIRROR_SESSION_ID                   250
+
 control Ingress(
     /* User */
     inout headers hdr,
@@ -119,8 +128,20 @@ control Ingress(
         ig_tm_md.copy_to_cpu = 1;
     }
 
-    action delegate() {
+    action delegate(MirrorId_t mirror_session) {
         ig_tm_md.copy_to_cpu = 1;
+        ig_tm_md.bypass_egress = 1; // TODO change dest for sender to notify sender
+
+        ig_dprsr_md.mirror_type = ING_PORT_MIRROR;
+
+        meta.mirror_header_type = HEADER_TYPE_MIRROR_INGRESS;
+        meta.mirror_header_info = (header_info_t)ING_PORT_MIRROR;
+
+        meta.ingress_port   = ig_intr_md.ingress_port;
+        meta.mirror_session = mirror_session;
+
+        meta.ingress_mac_tstamp    = ig_intr_md.ingress_mac_tstamp;
+        meta.ingress_global_tstamp = ig_prsr_md.global_tstamp;
     }
 
 
@@ -146,7 +167,7 @@ control Ingress(
 
         ig_tm_md.bypass_egress = 1; // TODO change dest for sender to notify sender
 
-        ig_tm_md.ucast_egress_port = 68; // packet gen port on tofino 1
+        ig_tm_md.ucast_egress_port = CPU_PORT; // packet gen port on tofino 1
         //TODO send msg via packet generator to originating host
     }
 
@@ -203,7 +224,7 @@ control Ingress(
                 // if cases for all packet types and
                 if ((hdr.udp.dstPort == 1234 || hdr.udp.dstPort == 2324) && hdr.ipv4.isValid() && hdr.udp.isValid()) {
                     if(hdr.fractos.cmd == fractos_cmd_type.InsertCap) {
-                        delegate();
+                        delegate(0);
                     } else if(hdr.fractos.cmd == fractos_cmd_type.Nop) {
                         // handle Nop Case
                         routing.apply();

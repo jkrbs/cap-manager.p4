@@ -4,13 +4,17 @@
 
 #include <core.p4>
 
+
+const PortId_t CPU_PORT = 64;
+
 enum bit<16> EtherType {
   VLAN      = 0x8100,
   QINQ      = 0x9100,
   MPLS      = 0x8847,
   IPV4      = 0x0800,
   ARP       = 0x0806,
-  IPV6      = 0x86dd
+  IPV6      = 0x86dd,
+  TO_CPU    = 0xbf01
 }
 
 enum bit<8> IPv4Protocols {
