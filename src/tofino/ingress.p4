@@ -1,17 +1,14 @@
 #include <core.p4>
 #include <tna.p4>
 #include "packet_types.p4"
-#include "mirror.p4"
 
 struct ingress_metadata_t {
-    bit<1> drop;
-    header_type_t  mirror_header_type;
-    header_info_t  mirror_header_info;
-    PortId_t       ingress_port;
-    MirrorId_t     mirror_session;
-    bit<48>        ingress_mac_tstamp;
-    bit<48>        ingress_global_tstamp;
-    bit<1>         ipv4_csum_err;
+    bool do_ing_mirroring;  // Enable ingress mirroring
+    bool do_egr_mirroring;  // Enable egress mirroring
+    MirrorId_t ing_mir_ses;   // Ingress mirror session ID
+    MirrorId_t egr_mir_ses;   // Egress mirror session ID
+    pkt_type_t pkt_type;
+    bool drop;
 }
 
 parser IngressParser(packet_in      pkt,
@@ -107,7 +104,7 @@ parser IngressParser(packet_in      pkt,
     }
 }
 
-#define CPU_MIRROR_SESSION_ID                   250
+#define CPU_MIRROR_SESSION_ID                   128
 
 control Ingress(
     /* User */
@@ -119,6 +116,11 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md) {
     
+    action set_mirror_type() {
+        ig_dprsr_md.mirror_type = MIRROR_TYPE_I2E;
+        meta.pkt_type = PKT_TYPE_MIRROR;
+    }
+
     action rewrite_mac(bit<48> smac) {
         hdr.ethernet.srcAddr = smac;
     }
@@ -128,21 +130,37 @@ control Ingress(
         ig_tm_md.copy_to_cpu = 1;
     }
 
-    action delegate(MirrorId_t mirror_session) {
-        ig_tm_md.copy_to_cpu = 1;
-        ig_tm_md.bypass_egress = 1; // TODO change dest for sender to notify sender
-
-        ig_dprsr_md.mirror_type = ING_PORT_MIRROR;
-
-        meta.mirror_header_type = HEADER_TYPE_MIRROR_INGRESS;
-        meta.mirror_header_info = (header_info_t)ING_PORT_MIRROR;
-
-        meta.ingress_port   = ig_intr_md.ingress_port;
-        meta.mirror_session = mirror_session;
-
-        meta.ingress_mac_tstamp    = ig_intr_md.ingress_mac_tstamp;
-        meta.ingress_global_tstamp = ig_prsr_md.global_tstamp;
+    action set_normal_pkt() {
+        hdr.bridged_md.setValid();
+        hdr.bridged_md.pkt_type = PKT_TYPE_NORMAL;
     }
+
+    action set_md(PortId_t dest_port, bool ing_mir, MirrorId_t ing_ses, bool egr_mir, MirrorId_t egr_ses) {
+        ig_tm_md.ucast_egress_port = dest_port;
+        meta.do_ing_mirroring = ing_mir;
+        meta.ing_mir_ses = ing_ses;
+        hdr.bridged_md.do_egr_mirroring = egr_mir;
+        hdr.bridged_md.egr_mir_ses = egr_ses;
+    }
+
+    table  mirror_fwd {
+        key = {
+            ig_intr_md.ingress_port  : exact;
+        }
+
+        actions = {
+            set_md;
+        }
+
+        size = 512;
+    }
+
+    // action delegate(MirrorId_t mirror_session) {
+    //     //ig_tm_md.copy_to_cpu = 1;
+    //     //ig_tm_md.bypass_egress = 0; // TODO change dest for sender to notify sender
+
+
+    // }
 
 
     // Cap exists and is valid
@@ -163,7 +181,7 @@ control Ingress(
 
     // Cap is invalid. Notify request issuer about dropping the packets
     action capRevoked() {
-        meta.drop = 1;
+        meta.drop = true;
 
         ig_tm_md.bypass_egress = 1; // TODO change dest for sender to notify sender
 
@@ -173,7 +191,7 @@ control Ingress(
 
 
     action drop() {
-        meta.drop = 1;
+        meta.drop = true;
     }
 
     table routing {
@@ -189,8 +207,8 @@ control Ingress(
         default_action = drop;
 
         const entries = {
-            0xa000001: capAllow_forward(0xcec6b6ab6a66,8);
-            0xa000003: capAllow_forward(0xe245f2409ed2,9);
+            0xa000001: capAllow_forward(0xd2920739f499,8);
+            0xa000003: capAllow_forward(0x72fe7a19b0e9,9);
         }
     }
 
@@ -210,7 +228,7 @@ control Ingress(
 
     apply {
         @atomic{
-            meta.drop = 0;
+            meta.drop = false;
             if (hdr.ethernet.etherType == EtherType.ARP) {
                 if (ig_intr_md.ingress_port == 9) {
                     arp_forward(8);
@@ -224,7 +242,15 @@ control Ingress(
                 // if cases for all packet types and
                 if ((hdr.udp.dstPort == 1234 || hdr.udp.dstPort == 2324) && hdr.ipv4.isValid() && hdr.udp.isValid()) {
                     if(hdr.fractos.cmd == fractos_cmd_type.InsertCap) {
-                        delegate(0);
+                        if (ig_intr_md.resubmit_flag == 0) {
+                            mirror_fwd.apply();
+                        }
+
+                        if (meta.do_ing_mirroring == true) {
+                            set_mirror_type();
+                        }
+
+                        set_normal_pkt();
                     } else if(hdr.fractos.cmd == fractos_cmd_type.Nop) {
                         // handle Nop Case
                         routing.apply();

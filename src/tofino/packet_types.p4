@@ -131,7 +131,33 @@ header fractos_revoke_cap_header_t {
     bit<64> cap_id;
 }
 
+typedef bit<8>  pkt_type_t;
+const pkt_type_t PKT_TYPE_NORMAL = 1;
+const pkt_type_t PKT_TYPE_MIRROR = 2;
+
+#if __TARGET_TOFINO__ == 1
+typedef bit<3> mirror_type_t;
+#else
+typedef bit<4> mirror_type_t;
+#endif
+const mirror_type_t MIRROR_TYPE_I2E = 1;
+const mirror_type_t MIRROR_TYPE_E2E = 2;
+
+header empty_header_t {}
+struct empty_metadata_t {}
+
+header mirror_bridged_metadata_h {
+    pkt_type_t pkt_type;
+    @flexible bool do_egr_mirroring;  //  Enable egress mirroring
+    @flexible MirrorId_t egr_mir_ses;   // Egress mirror session ID
+}
+
+header mirror_h {
+    pkt_type_t  pkt_type;
+}
+
 struct headers {
+    mirror_bridged_metadata_h bridged_md;
     ethernet_t ethernet;
     ipv4_t ipv4;
     udp_t udp;
