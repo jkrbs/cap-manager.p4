@@ -1,0 +1,8 @@
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
+
+#define CONTROLLER_ADDRESS 0x0a000009
+#define CONTROLLER_PORT 1234
+#define CONTROLLER_MAC 0x72fe7a19b0e9
+
+#endif

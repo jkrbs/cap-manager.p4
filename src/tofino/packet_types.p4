@@ -4,6 +4,7 @@
 
 #include <core.p4>
 
+#include "config.p4"
 
 const PortId_t CPU_PORT = 64;
 

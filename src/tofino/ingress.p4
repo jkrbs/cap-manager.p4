@@ -1,6 +1,7 @@
 #include <core.p4>
 #include <tna.p4>
 #include "packet_types.p4"
+#include "config.p4"
 
 struct ingress_metadata_t {
     bool do_ing_mirroring;  // Enable ingress mirroring
@@ -141,6 +142,9 @@ control Ingress(
         meta.ing_mir_ses = ing_ses;
         hdr.bridged_md.do_egr_mirroring = egr_mir;
         hdr.bridged_md.egr_mir_ses = egr_ses;
+        hdr.ipv4.dstAddr = CONTROLLER_ADDRESS;
+        hdr.udp.dstPort = CONTROLLER_PORT;
+        hdr.ethernet.dstAddr = CONTROLLER_MAC;
     }
 
     table  mirror_fwd {
@@ -166,7 +170,7 @@ control Ingress(
     // Cap exists and is valid
     action capAllow_forward(MacAddr_t dstAddr, PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
-        ig_tm_md.bypass_egress = 1;
+        //ig_tm_md.bypass_egress = 1;
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = 0xffffffffff;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
@@ -174,7 +178,7 @@ control Ingress(
 
     // Cap exists and is valid
     action arp_forward(PortId_t port) {
-        ig_tm_md.bypass_egress = 1;
+       // ig_tm_md.bypass_egress = 1;
         ig_tm_md.mcast_grp_a = 0x8000;
         ig_tm_md.ucast_egress_port = port;
     }
@@ -242,15 +246,18 @@ control Ingress(
                 // if cases for all packet types and
                 if ((hdr.udp.dstPort == 1234 || hdr.udp.dstPort == 2324) && hdr.ipv4.isValid() && hdr.udp.isValid()) {
                     if(hdr.fractos.cmd == fractos_cmd_type.InsertCap) {
-                        if (ig_intr_md.resubmit_flag == 0) {
-                            mirror_fwd.apply();
-                        }
+                        if(hdr.ipv4.dstAddr != CONTROLLER_ADDRESS&& hdr.ipv4.srcAddr != CONTROLLER_ADDRESS) {
+                            if (ig_intr_md.resubmit_flag == 0) {
+                                mirror_fwd.apply();
+                            }
 
-                        if (meta.do_ing_mirroring == true) {
-                            set_mirror_type();
+                            if (meta.do_ing_mirroring == true) {
+                                set_mirror_type();
+                            }
                         }
-
+                        
                         set_normal_pkt();
+                        routing.apply();
                     } else if(hdr.fractos.cmd == fractos_cmd_type.Nop) {
                         // handle Nop Case
                         routing.apply();
@@ -274,13 +281,20 @@ control Ingress(
     }
 
 }
-control IngressDeparser(packet_out                 pkt,
-    /* User */
-    inout headers hdr,
-    in    ingress_metadata_t                      meta,
-    /* Intrinsic */
-    in    ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md) {
+control IngressDeparser(
+        packet_out pkt,
+        inout headers hdr,
+        in ingress_metadata_t ig_md,
+        in ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md) {
+
+    Mirror() mirror;
+
     apply {
+
+        if (ig_dprsr_md.mirror_type == MIRROR_TYPE_I2E) {
+            mirror.emit<mirror_h>(ig_md.ing_mir_ses, {ig_md.pkt_type});
+        }
+
         pkt.emit(hdr);
     }
 }

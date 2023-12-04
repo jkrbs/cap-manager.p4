@@ -59,8 +59,23 @@ control EgressDeparser(
         in egress_intrinsic_metadata_for_deparser_t eg_dprsr_md) {
 
     Mirror() mirror;
-
+    Checksum() ipv4_checksum;
+    Checksum() udp_checksum;
     apply {
+        hdr.ipv4.hdrChecksum = ipv4_checksum.update(
+            { 
+              hdr.ipv4.version,
+              hdr.ipv4.ihl,
+              hdr.ipv4.diffserv,
+              hdr.ipv4.totalLen,
+              hdr.ipv4.identification,
+              hdr.ipv4.flags,
+              hdr.ipv4.fragOffset,
+              hdr.ipv4.ttl,
+              hdr.ipv4.protocol,
+              hdr.ipv4.srcAddr,
+              hdr.ipv4.dstAddr 
+        });
 
         if (eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {
             mirror.emit<mirror_h>(eg_md.egr_mir_ses, {eg_md.pkt_type});
