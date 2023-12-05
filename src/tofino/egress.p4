@@ -44,6 +44,31 @@ parser EgressParser(packet_in        pkt,
 
     state parse_ethernet {
         pkt.extract(hdr.ethernet);
+         transition select(hdr.ethernet.etherType) {
+            EtherType.IPV4: parse_ipv4;
+            EtherType.ARP: parse_arp;
+            default: accept;
+        }
+    }
+     state parse_ipv4 {
+        pkt.extract(hdr.ipv4);
+        transition select(hdr.ipv4.protocol) {
+            IPv4Protocols.TCP: parse_tcp;
+            IPv4Protocols.UDP: parse_udp;
+            default: accept;
+        }
+    }
+
+    state parse_arp {
+        transition accept;
+    }
+
+    state parse_tcp {
+        transition reject;
+    }
+
+    state parse_udp {
+        pkt.extract(hdr.udp);
         transition accept;
     }
 
@@ -60,7 +85,6 @@ control EgressDeparser(
 
     Mirror() mirror;
     Checksum() ipv4_checksum;
-    Checksum() udp_checksum;
     apply {
         hdr.ipv4.hdrChecksum = ipv4_checksum.update(
             { 
@@ -74,7 +98,7 @@ control EgressDeparser(
               hdr.ipv4.ttl,
               hdr.ipv4.protocol,
               hdr.ipv4.srcAddr,
-              hdr.ipv4.dstAddr 
+              hdr.ipv4.dstAddr
         });
 
         if (eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {
@@ -82,6 +106,7 @@ control EgressDeparser(
         }
 
         pkt.emit(hdr.ethernet);
+        pkt.emit(hdr.ipv4);
     }
 }
 
@@ -106,9 +131,6 @@ control Egress(
     }
 
     apply {
-
-        if (hdr.bridged_md.do_egr_mirroring == true) {
-            set_mirror();
-        }
+        set_mirror();
     }
 }

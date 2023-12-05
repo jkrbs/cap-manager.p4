@@ -17,4 +17,7 @@ sudo bash <<EOF
 	ip a add 10.0.0.3/24 dev veth3
 	ip a add 10.0.0.9/24 dev veth9
 
+	arp -s 10.0.0.3 -i veth1  d2:92:07:39:f4:99
+	arp -s 10.0.0.1 -i veth3 4e:3c:ba:0d:f8:00 
+	arp -s 10.0.0.9 -i veth9 e6:e1:8d:3d:2c:9b
 EOF

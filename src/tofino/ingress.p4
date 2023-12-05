@@ -118,8 +118,9 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md) {
     
     action set_mirror_type() {
-        ig_dprsr_md.mirror_type = MIRROR_TYPE_I2E;
+        ig_dprsr_md.mirror_type = MIRROR_TYPE_E2E;
         meta.pkt_type = PKT_TYPE_MIRROR;
+        hdr.ipv4.hdrChecksum = 0x0;
     }
 
     action rewrite_mac(bit<48> smac) {
@@ -142,7 +143,9 @@ control Ingress(
         meta.ing_mir_ses = ing_ses;
         hdr.bridged_md.do_egr_mirroring = egr_mir;
         hdr.bridged_md.egr_mir_ses = egr_ses;
-        hdr.ipv4.dstAddr = CONTROLLER_ADDRESS;
+
+        hdr.ipv4.dstAddr = 0x0a000009;
+        hdr.ipv4.hdrChecksum = 0;
         hdr.udp.dstPort = CONTROLLER_PORT;
         hdr.ethernet.dstAddr = CONTROLLER_MAC;
     }
@@ -209,10 +212,11 @@ control Ingress(
         }
 
         default_action = drop;
-
+        size = 8192;
         const entries = {
             0xa000001: capAllow_forward(0xd2920739f499,8);
             0xa000003: capAllow_forward(0x72fe7a19b0e9,9);
+            0xA000009: capAllow_forward(CONTROLLER_MAC, 128);
         }
     }
 
@@ -226,50 +230,46 @@ control Ingress(
             drop;
             capRevoked;
         }
-
+        size = 8192;
         default_action = capAllow_forward(0xffffffffffff, 64);
     }
 
     apply {
-        @atomic{
-            meta.drop = false;
-            if (hdr.ethernet.etherType == EtherType.ARP) {
-                if (ig_intr_md.ingress_port == 9) {
-                    arp_forward(8);
-                }
-                if (ig_intr_md.ingress_port == 8) {
-                    arp_forward(9);
-                }
+        meta.drop = false;
+        if (hdr.ethernet.etherType == EtherType.ARP) {
+            if (ig_intr_md.ingress_port == 9) {
+                arp_forward(8);
             }
+            if (ig_intr_md.ingress_port == 8) {
+                arp_forward(9);
+            }
+        }
 
-            else if(hdr.ethernet.etherType == EtherType.IPV4 && hdr.ethernet.isValid()) {
-                // if cases for all packet types and
-                if ((hdr.udp.dstPort == 1234 || hdr.udp.dstPort == 2324) && hdr.ipv4.isValid() && hdr.udp.isValid()) {
-                    if(hdr.fractos.cmd == fractos_cmd_type.InsertCap) {
-                        if(hdr.ipv4.dstAddr != CONTROLLER_ADDRESS&& hdr.ipv4.srcAddr != CONTROLLER_ADDRESS) {
-                            if (ig_intr_md.resubmit_flag == 0) {
-                                mirror_fwd.apply();
-                            }
-
-                            if (meta.do_ing_mirroring == true) {
-                                set_mirror_type();
-                            }
+        else if(hdr.ethernet.etherType == EtherType.IPV4 && hdr.ethernet.isValid()) {
+            // if cases for all packet types and
+            if ((hdr.udp.dstPort == 1234 || hdr.udp.dstPort == 2324)) {
+                if(hdr.fractos.cmd == fractos_cmd_type.InsertCap) {
+                    if(hdr.ipv4.dstAddr != CONTROLLER_ADDRESS&& hdr.ipv4.srcAddr != CONTROLLER_ADDRESS) {
+                        if (ig_intr_md.resubmit_flag == 0) {
+                            mirror_fwd.apply();
                         }
-                        
-                        set_normal_pkt();
-                        routing.apply();
-                    } else if(hdr.fractos.cmd == fractos_cmd_type.Nop) {
-                        // handle Nop Case
-                        routing.apply();
-                    } else if(hdr.fractos.cmd == fractos_cmd_type.RequestInvoke) {
-                        cap_table.apply();    
-                    }
-                } else {
-                    routing.apply();
-                }
-            }
 
-            else {
+                        if (meta.do_ing_mirroring == true) {
+                            set_mirror_type();
+                        } else {
+                            set_normal_pkt();
+                        }
+                    }
+                } else if(hdr.fractos.cmd == fractos_cmd_type.Nop) {
+                    // handle Nop Case
+                    cap_table.apply();
+                } else if(hdr.fractos.cmd == fractos_cmd_type.RequestInvoke) {
+                    cap_table.apply();    
+                }
+        
+                routing.apply();
+
+            } else {
                 if (ig_intr_md.ingress_port == 8) {
                     arp_forward(9);
                 }
@@ -279,7 +279,6 @@ control Ingress(
             }
         }  
     }
-
 }
 control IngressDeparser(
         packet_out pkt,
@@ -288,8 +287,22 @@ control IngressDeparser(
         in ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md) {
 
     Mirror() mirror;
-
+  Checksum() ipv4_checksum;
     apply {
+        hdr.ipv4.hdrChecksum = ipv4_checksum.update(
+            { 
+              hdr.ipv4.version,
+              hdr.ipv4.ihl,
+              hdr.ipv4.diffserv,
+              hdr.ipv4.totalLen,
+              hdr.ipv4.identification,
+              hdr.ipv4.flags,
+              hdr.ipv4.fragOffset,
+              hdr.ipv4.ttl,
+              hdr.ipv4.protocol,
+              hdr.ipv4.srcAddr,
+              hdr.ipv4.dstAddr
+        });
 
         if (ig_dprsr_md.mirror_type == MIRROR_TYPE_I2E) {
             mirror.emit<mirror_h>(ig_md.ing_mir_ses, {ig_md.pkt_type});

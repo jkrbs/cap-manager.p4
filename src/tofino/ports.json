@@ -11,9 +11,9 @@
             "veth2":4
         },
         {
-            "device_port": 64,
-            "veth1": 9,
-            "veth2": 10
+            "device_port": 28,
+            "veth1": 10,
+            "veth2": 9
         }
     ]
 }
