@@ -1,19 +1,16 @@
 {
-    "PortToVeth": [
+    "PortToIf": [
         {
             "device_port":8,
-            "veth1":1,
-            "veth2":2
+            "if": "veth2"
         },
         {
             "device_port":9,
-            "veth1":3,
-            "veth2":4
+            "if": "veth4"
         },
         {
-            "device_port": 28,
-            "veth1": 10,
-            "veth2": 9
+            "device_port": 64,
+            "if": "veth10"
         }
     ]
 }

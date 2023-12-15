@@ -23,12 +23,31 @@ enum bit<8> IPv4Protocols {
     UDP = 17
 }
 
+const bit<16> ARP_HTYPE = 0x0001;    // Ethernet Hardware type is 1
+const bit<16> ARP_PTYPE = EtherType.IPV4; // Protocol used for ARP is IPV4
+const bit<8>  ARP_HLEN  = 6;         // Ethernet address size is 6 bytes
+const bit<8>  ARP_PLEN  = 4;         // IP address size is 4 bytes
+const bit<16> ARP_REQ = 1;           // Operation 1 is request
+const bit<16> ARP_REPLY = 2;         // Operation 2 is reply
+
 typedef bit<48> MacAddr_t;
 
 header ethernet_t {
     MacAddr_t dstAddr;
     MacAddr_t srcAddr;
     EtherType etherType;
+}
+
+header arp_t {
+  bit<16>   h_type;
+  bit<16>   p_type;
+  bit<8>    h_len;
+  bit<8>    p_len;
+  bit<16>   op_code;
+  MacAddr_t src_mac;
+  bit<32> src_ip;
+  MacAddr_t dst_mac;
+  bit<32> dst_ip;
 }
 
 header ipv4_t {
@@ -161,6 +180,7 @@ struct headers {
     mirror_bridged_metadata_h bridged_md;
     ethernet_t ethernet;
     ipv4_t ipv4;
+    arp_t arp;
     udp_t udp;
     fractos_common_header_t fractos;
 
