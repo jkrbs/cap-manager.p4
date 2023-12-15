@@ -1,6 +1,8 @@
 #!/bin/sh
 
 sudo bash <<EOF
-	ip link del veth1
-	ip link del veth3
+	ip netns del switch
+	ip netns del client
+	ip netns del service
+	ip netns del control-plane
 EOF
