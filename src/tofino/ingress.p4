@@ -2,112 +2,9 @@
 #include <tna.p4>
 #include "packet_types.p4"
 #include "config.p4"
+#include "arp_table.p4"
 
-struct ingress_metadata_t {
-    bool do_ing_mirroring;  // Enable ingress mirroring
-    bool do_egr_mirroring;  // Enable egress mirroring
-    MirrorId_t ing_mir_ses;   // Ingress mirror session ID
-    MirrorId_t egr_mir_ses;   // Egress mirror session ID
-    pkt_type_t pkt_type;
-    bool drop;
-}
-
-parser IngressParser(packet_in      pkt,
-    out headers hdr,
-    out ingress_metadata_t         meta,
-    out ingress_intrinsic_metadata_t  ig_intr_md) {
-    state start {
-        pkt.extract(ig_intr_md);
-        pkt.advance(PORT_METADATA_SIZE);
-        transition parse_ethernet;
-    }
-
-    state parse_ethernet {
-        pkt.extract(hdr.ethernet);
-
-        transition select(hdr.ethernet.etherType) {
-            EtherType.IPV4: parse_ipv4;
-            EtherType.ARP: parse_arp;
-            default: accept;
-        }
-    }
-
-    state parse_ipv4 {
-        pkt.extract(hdr.ipv4);
-        transition select(hdr.ipv4.protocol) {
-            IPv4Protocols.TCP: parse_tcp;
-            IPv4Protocols.UDP: parse_udp;
-            default: accept;
-        }
-    }
-
-    state parse_arp {
-        pkt.extract(hdr.arp);
-        transition select(hdr.arp.op_code) {
-            ARP_REQ: accept;
-	        default: accept;
-        }
-    }
-
-    state parse_tcp {
-        transition reject;
-    }
-
-    state parse_udp {
-        pkt.extract(hdr.udp);
-        transition parse_fractos_common_header;
-    }
-
-    state parse_fractos_common_header {
-        pkt.extract(hdr.fractos);
-        transition select(hdr.fractos.cmd) {
-            fractos_cmd_type.Nop: parse_fractos_nop;
-            fractos_cmd_type.InsertCap: parse_fractos_insert_cap;
-            fractos_cmd_type.RequestCreate: parse_fractos_request_create;
-
-            fractos_cmd_type.RequestInvoke: parse_request_invoke;
-            fractos_cmd_type.CapInvalid: parse_cap_invalid;
-            fractos_cmd_type.RequestResponse: parse_request_response;
-            fractos_cmd_type.CapRevoke: parse_cap_revoke;
-            default: accept;
-        }
-    }
-
-    state parse_fractos_request_create {
-        pkt.extract(hdr.request_create);
-        transition accept;
-    }
-
-    state parse_fractos_nop {
-        pkt.extract(hdr.nop);
-        transition accept;
-    }
-
-    state parse_fractos_insert_cap {
-        pkt.extract(hdr.cap_insert);
-        transition accept;
-    }
-
-    state parse_request_invoke {
-        pkt.extract(hdr.request_invoke);
-        transition accept;
-    }
-
-    state parse_cap_invalid {
-        pkt.extract(hdr.cap_invalid);
-        transition accept;
-    }
-
-    state parse_request_response {
-        pkt.extract(hdr.request_response);
-        transition accept;
-    }
-
-    state parse_cap_revoke {
-        pkt.extract(hdr.cap_revoke);
-        transition accept;
-    }
-}
+#include "ingress_parser.p4"
 
 #define CPU_MIRROR_SESSION_ID                   128
 
@@ -124,50 +21,7 @@ control Ingress(
     action drop() {
         meta.drop = true;
     }
-    /**
-        ARP responder is copied from here
-        https://github.com/p4lang/p4pi/blob/a57a376dde6db81b70db85fcc7d37a8b839fe015/packages/p4pi-examples/bmv2/arp_icmp/arp_icmp.p4#L4
-    */
-    action arp_reply(MacAddr_t request_mac) {
-        //update operation code from request to reply
-        hdr.arp.op_code = ARP_REPLY;
-      
-        //reply's dst_mac is the request's src mac
-        hdr.arp.dst_mac = hdr.arp.src_mac;
-      
-        //reply's dst_ip is the request's src ip
-        hdr.arp.src_mac = request_mac;
-
-        //reply's src ip is the request's dst ip
-        hdr.arp.src_ip = hdr.arp.dst_ip;
-
-        //update ethernet header
-        hdr.ethernet.dstAddr = hdr.ethernet.srcAddr;
-        hdr.ethernet.srcAddr = request_mac;
-
-        //send it back to the same port
-        ig_tm_md.ucast_egress_port = ig_intr_md.ingress_port;
-    }
-
-     table arp_exact {
-      key = {
-        hdr.arp.dst_ip: exact;
-      }
-      actions = {
-        arp_reply;
-        drop;
-      }
-      size = 1024;
-      default_action = drop;
-      const entries = {
-        0x0A000101: arp_reply(0xd2920739f499);
-        0x0A000102: arp_reply(0x1a507bd705e0);
-        0x0A000301: arp_reply(0x4e3cba0df800);
-        0x0A000302: arp_reply(0x2afee6c639ca);
-        0x0A000901: arp_reply(CONTROLLER_SWITCHPORT_MAC);
-        0x0A000902: arp_reply(CONTROLLER_MAC);
-      }
-    }
+    
 
     action set_mirror_type() {
         ig_dprsr_md.mirror_type = MIRROR_TYPE_E2E;
@@ -266,8 +120,8 @@ control Ingress(
         default_action = drop;
         size = 8192;
         const entries = {
-            0xa000102: capAllow_forward(0x1a507bd705e0, 0xd2920739f499, 8);
-            0xa000302: capAllow_forward(0x2afee6c639ca, 0x4e3cba0df800, 9);
+            0xa000102: capAllow_forward(0x1a507bd705e0, 0x000000000100, 1);
+            0xa000202: capAllow_forward(0x2afee6c639ca, 0x000000000101, 32);
             0xa000902: capAllow_forward(CONTROLLER_MAC, CONTROLLER_SWITCHPORT_MAC, 64);
         }
     }
@@ -286,11 +140,13 @@ control Ingress(
         default_action = capAllow_forward(CONTROLLER_MAC, CONTROLLER_SWITCHPORT_MAC, 64);
     }
 
+    ArpTable() arp;
+    
     apply {
         meta.drop = false;
         if (hdr.ethernet.etherType == EtherType.ARP) {
             if (hdr.arp.isValid()){
-                arp_exact.apply();
+                arp.apply(hdr, meta, ig_intr_md, ig_tm_md);
             }
         }
 
