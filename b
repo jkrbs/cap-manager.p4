@@ -2,6 +2,13 @@
 utils/set_sde.bash ~
 if [ -d "$1" ]; then 
 	make -f build.mk build
+
+elif [ "$1" == "push" ]; then
+	rsync -avr . tofino1:jakob/cap-mgr-dp/
+
+elif [ "$1" == "pull" ]; then
+	rsync -avr tofino1:jakob/cap-mgr-dp/* ./
+
 elif [ "$1" == "run" ]; then
 	make -f build.mk model &
 	make -f build.mk veth_setup
