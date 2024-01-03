@@ -14,3 +14,5 @@ bf_*
 target
 __pycache__
 *.pcap
+install_manifest.txt
+zlog*
