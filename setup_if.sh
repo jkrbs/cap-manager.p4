@@ -38,10 +38,6 @@ sudo bash <<EOF
 	ip netns exec switch ip a add 10.0.9.10/31 dev veth10
 	ip netns exec switch ip a add 10.0.9.2/31 dev veth9
 
-	ip netns exec switch ip r add 10.0.9.2/31 dev veth9 via 10.0.9.11
-	ip netns exec switch ip r add 10.0.9.10/31 dev veth10 via 10.0.9.3b
-
-
 	# ip r add 10.0.0.0/16 via 10.0.9.1 dev veth9 metric 100
 	# ip r add 10.0.0.0/16 via 10.0.3.1 dev veth3 metric 200
 	# ip r add 10.0.0.0/16 via 10.0.1.1 dev veth1 metric 300
@@ -55,14 +51,16 @@ sudo bash <<EOF
 	ip netns exec switch ip link set veth9 up
 
 	ip link add name br-ctrlplane type bridge
-	ip a add dev br-ctrlplane 10.0.9.3/31
-	ip a add dev br-ctrlplane 10.0.9.11/31
+	ip a add dev br-ctrlplane 10.0.9.3/24
+	ip a add dev br-ctrlplane 10.0.9.11/24
 	ip link set br-ctrlplane up
 	ip link set dev veth21 master br-ctrlplane 
 	ip link set dev veth22 master br-ctrlplane
 	ip link set dev veth21 up
 	ip link set dev veth22 up
 
+	ip netns exec switch ip r add 10.0.9.2/31 dev veth9 via 10.0.9.3
+	ip netns exec switch ip r add 10.0.9.10/31 dev veth10 via 10.0.9.11
 
 	# ip neigh add dev veth1 to 10.0.1.1 lladdr d2:92:07:39:f4:99
 	# ip neigh add dev veth2 to 10.0.1.2 lladdr 1a:50:7b:d7:05:e0
