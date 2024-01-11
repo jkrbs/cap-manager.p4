@@ -42,7 +42,7 @@ control ArpTable(
 
     table arp_exact {
         key = {
-            hdr.arp.dst_ip: exact;
+            hdr.arp.dst_ip: exact @name("ipaddr");
         }
         actions = {
             arp_reply;
@@ -50,14 +50,6 @@ control ArpTable(
         }
         size = 1024;
         default_action = drop;
-        const entries = {
-            0x0A000101: arp_reply(0xd2920739f499);
-            0x0A000102: arp_reply(0x000000000100);
-            0x0A000201: arp_reply(0x4e3cba0df800);
-            0x0A000202: arp_reply(0x000000000101);
-            0x0A000901: arp_reply(CONTROLLER_SWITCHPORT_MAC);
-            0x0A000902: arp_reply(CONTROLLER_MAC);
-        }
     }
 
     apply {

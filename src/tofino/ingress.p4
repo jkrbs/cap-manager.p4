@@ -86,6 +86,10 @@ control Ingress(
         // ig_tm_md.bypass_egress = 1;
         hdr.ethernet.dstAddr = dstAddr;
         hdr.ethernet.srcAddr = srcAddr;
+
+        // UDP Checksums are optional. The checksum should be properly calculated in more serious implementation
+        hdr.udp.checksum = 0;
+
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
@@ -119,11 +123,6 @@ control Ingress(
 
         default_action = drop;
         size = 8192;
-        const entries = {
-            0xa000102: capAllow_forward(0x1a507bd705e0, 0x000000000100, 1);
-            0xa000202: capAllow_forward(0x2afee6c639ca, 0x000000000101, 32);
-            0xa000902: capAllow_forward(CONTROLLER_MAC, CONTROLLER_SWITCHPORT_MAC, 64);
-        }
     }
 
     table cap_table {
