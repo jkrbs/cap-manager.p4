@@ -38,10 +38,6 @@ sudo bash <<EOF
 	ip netns exec switch ip a add 10.0.9.10/31 dev veth10
 	ip netns exec switch ip a add 10.0.9.2/31 dev veth9
 
-	# ip r add 10.0.0.0/16 via 10.0.9.1 dev veth9 metric 100
-	# ip r add 10.0.0.0/16 via 10.0.3.1 dev veth3 metric 200
-	# ip r add 10.0.0.0/16 via 10.0.1.1 dev veth1 metric 300
-
 	ip netns exec switch ip link set veth2 up
 	ip netns exec switch ip link set veth4 up
 	ip netns exec switch ip link set veth10 up
@@ -70,4 +66,14 @@ sudo bash <<EOF
 
 	# ip neigh add dev veth10 to 10.0.9.2 lladdr 72:fe:7a:19:b0:e9
 	# ip neigh add dev veth9 to 10.0.9.1 lladdr e6:e1:8d:3d:2c:9b
+
+	ip netns exec switch ip l set lo up
+	ip netns exec switch ip a add dev lo 127.0.0.1/8
+	ip netns exec client ip l set lo up
+	ip netns exec client ip a add dev lo 127.0.0.1/8
+	ip netns exec service ip l set lo up
+	ip netns exec service ip a add dev lo 127.0.0.1/8
+
+	ip netns exec service ip r add 10.0.0.0/16 via 10.0.1.1
+	ip netns exec client ip r add 10.0.0.0/16 via 10.0.3.1
 EOF
