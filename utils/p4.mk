@@ -85,6 +85,9 @@ P4_LANG ?= p4-16
 # Run the P4
 model:
 	${SDE}/run_tofino_model.sh -p ${P4_NAME} $(PORT_INFO_PAR)
+model-quiet:
+	${SDE}/run_tofino_model.sh -q -p ${P4_NAME} $(PORT_INFO_PAR)
+
 switchd:
 	${SDE}/run_switchd.sh -p ${P4_NAME}
 
