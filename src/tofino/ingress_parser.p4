@@ -5,6 +5,13 @@ parser IngressParser(packet_in      pkt,
     out ingress_metadata_t         meta,
     out ingress_intrinsic_metadata_t  ig_intr_md) {
     state start {
+        meta.do_egr_mirroring = false;
+        meta.do_ing_mirroring = false;
+        meta.ing_mir_ses = 0;
+        meta.egr_mir_ses = 0;
+        meta.pkt_type = 0;
+        meta.drop = false;
+
         pkt.extract(ig_intr_md);
         pkt.advance(PORT_METADATA_SIZE);
         transition parse_ethernet;

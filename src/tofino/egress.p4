@@ -2,8 +2,8 @@
 #include "util.p4"
 
 struct egress_metadata_t {
-    bit<1> do_ing_mirroring;  // Enable ingress mirroring
-    bit<1> do_egr_mirroring;  // Enable egress mirroring
+    bool do_ing_mirroring;  // Enable ingress mirroring
+    bool do_egr_mirroring;  // Enable egress mirroring
     MirrorId_t ing_mir_ses;   // Ingress mirror session ID
     MirrorId_t egr_mir_ses;   // Egress mirror session ID
     pkt_type_t pkt_type;
@@ -24,6 +24,8 @@ parser EgressParser(packet_in        pkt,
 
     state parse_metadata {
         mirror_h mirror_md = pkt.lookahead<mirror_h>();
+        meta.pkt_type = mirror_md.pkt_type;
+
         transition select(mirror_md.pkt_type) {
             PKT_TYPE_MIRROR : parse_mirror_md;
             PKT_TYPE_NORMAL : parse_bridged_md;
@@ -33,6 +35,10 @@ parser EgressParser(packet_in        pkt,
 
     state parse_bridged_md {
         pkt.extract(hdr.bridged_md);
+
+        meta.do_egr_mirroring = hdr.bridged_md.do_egr_mirroring;
+        meta.egr_mir_ses = hdr.bridged_md.egr_mir_ses;
+
         transition parse_ethernet;
     }
 

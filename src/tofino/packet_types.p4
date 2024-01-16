@@ -95,6 +95,9 @@ enum bit<32> fractos_cmd_type {
         CapClose = 0x05000000,
         CapRevoke = 0x06000000,
         CapInvalid = 0x07000000,
+
+        MemoryCopy = 0x0a000000,
+        MemoryCopyResponse = 0x0b000000,
         /* Gap in OPCode Numbers Caused by Packet Types Unsupported by this implementation */
         RequestCreate = 0x0d000000,
         RequestInvoke = 0x0e000000,

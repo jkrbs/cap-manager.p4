@@ -72,12 +72,10 @@ control Ingress(
         size = 512;
     }
 
-    // action delegate(MirrorId_t mirror_session) {
-    //     //ig_tm_md.copy_to_cpu = 1;
-    //     //ig_tm_md.bypass_egress = 0; // TODO change dest for sender to notify sender
-
-
-    // }
+    action delegate(MirrorId_t mirror_session) {
+        ig_tm_md.copy_to_cpu = 1;
+        ig_tm_md.bypass_egress = 0; // TODO change dest for sender to notify sender
+    }
 
 
     // Cap exists and is valid
@@ -113,7 +111,7 @@ control Ingress(
    
     table routing {
         key = {
-            hdr.ipv4.dstAddr: exact;
+            hdr.ipv4.dstAddr: lpm;
         }
 
         actions = {
@@ -135,7 +133,7 @@ control Ingress(
             drop;
             capRevoked;
         }
-        size = 8192;
+        size = 500000;
         default_action = capAllow_forward(CONTROLLER_MAC, CONTROLLER_SWITCHPORT_MAC, 64);
     }
 
@@ -169,11 +167,11 @@ control Ingress(
                     cap_table.apply();
                 } else if(hdr.fractos.cmd == fractos_cmd_type.RequestInvoke) {
                     cap_table.apply();    
+                } else if(hdr.fractos.cmd == fractos_cmd_type.MemoryCopy) {
+                    cap_table.apply();    
                 }
-
-            } else {
-                routing.apply();
             }
+            routing.apply();
         }  
     }
 }
@@ -186,8 +184,7 @@ control IngressDeparser(
     Mirror() mirror;
     
     Checksum() ipv4_checksum;
-    Checksum() udp_checksum;
-    
+
     apply {
         hdr.ipv4.hdrChecksum = ipv4_checksum.update(
             { 
@@ -210,3 +207,4 @@ control IngressDeparser(
         pkt.emit(hdr);
     }
 }
+5
