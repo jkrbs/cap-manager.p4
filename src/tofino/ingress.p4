@@ -133,7 +133,7 @@ control Ingress(
             drop;
             capRevoked;
         }
-        size = 500000;
+        size = 340000;
         default_action = capAllow_forward(CONTROLLER_MAC, CONTROLLER_SWITCHPORT_MAC, 64);
     }
 
@@ -207,4 +207,3 @@ control IngressDeparser(
         pkt.emit(hdr);
     }
 }
-5

@@ -118,11 +118,13 @@ struct IpAddress {
     bit<16> port;
 }
 
+typedef bit<128> CapID_t;
+
 header fractos_common_header_t {
     bit<64> size;
     bit<32> stream_id;
     fractos_cmd_type cmd;
-    bit<64> cap_id;
+    CapID_t cap_id;
 }
 
 header fractos_nop_request_t {
@@ -144,14 +146,14 @@ header fractos_request_response_header_t {
 
 header fractos_insert_cap_header_t {
     IpAddress cap_owner_ip;
-    bit<64> cap_id;
+    CapID_t cap_id;
     bit<8> cap_type;
     IpAddress object_owner;
 }
 
 header fractos_revoke_cap_header_t {
     IpAddress cap_owner_ip;
-    bit<64> cap_id;
+    CapID_t cap_id;
 }
 
 typedef bit<8>  pkt_type_t;
