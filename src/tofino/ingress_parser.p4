@@ -11,6 +11,7 @@ parser IngressParser(packet_in      pkt,
         meta.egr_mir_ses = 0;
         meta.pkt_type = 0;
         meta.drop = false;
+      //  meta.capUnknown = false;
 
         pkt.extract(ig_intr_md);
         pkt.advance(PORT_METADATA_SIZE);

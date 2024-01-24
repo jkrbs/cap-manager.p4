@@ -1,11 +1,11 @@
 {
     "PortToIf": [
         {
-            "device_port":8,
+            "device_port":0,
             "if": "veth2"
         },
         {
-            "device_port":9,
+            "device_port":128,
             "if": "veth4"
         },
         {

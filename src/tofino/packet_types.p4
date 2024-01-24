@@ -135,6 +135,12 @@ header fractos_request_create_header_t {
 }
 
 header fractos_request_invoke_header_t {
+    bit<8> numberContinutions;
+    // arrays of primitive data-types are not supported. Only header stacks.
+    CapID_t continuations0;
+    CapID_t continuations1;
+    CapID_t continuations2;
+    CapID_t continuations3;
 }
 
 header fractos_cap_invalid_header_t {

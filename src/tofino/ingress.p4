@@ -91,6 +91,17 @@ control Ingress(
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
+    action capUnknown() {
+        //hdr.capUnknown = true;
+        // UDP Checksums are optional. The checksum should be properly calculated in more serious implementation
+        hdr.udp.checksum = 0;
+
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+        hdr.bridged_md.do_egr_mirroring = true;
+        hdr.bridged_md.egr_mir_ses = 128;
+        ig_tm_md.bypass_egress = 0;
+    }
+
     // Cap exists and is valid
     action arp_forward(PortId_t port) {
         ig_tm_md.bypass_egress = 0;
@@ -132,9 +143,10 @@ control Ingress(
             capAllow_forward;
             drop;
             capRevoked;
+            capUnknown;
         }
-        size = 340000;
-        default_action = capAllow_forward(CONTROLLER_MAC, CONTROLLER_SWITCHPORT_MAC, 64);
+        size = 300000;
+        default_action = capUnknown;
     }
 
     ArpTable() arp;
@@ -150,11 +162,20 @@ control Ingress(
         else if(hdr.ethernet.etherType == EtherType.IPV4 && hdr.ethernet.isValid()) {
             // if cases for all packet types and
             if ((hdr.udp.dstPort == 1234 || hdr.udp.dstPort == 2324)) {
+                if(hdr.fractos.cmd == fractos_cmd_type.Nop ||
+                hdr.fractos.cmd == fractos_cmd_type.RequestInvoke ||
+                hdr.fractos.cmd == fractos_cmd_type.MemoryCopy
+                
+                ) {
+                    // handle Nop Case
+                    cap_table.apply();
+                }
+
                 if(hdr.fractos.cmd == fractos_cmd_type.InsertCap) {
-                    if(hdr.ipv4.dstAddr != CONTROLLER_ADDRESS && hdr.ipv4.srcAddr != CONTROLLER_ADDRESS) {
-                        //if (ig_intr_md.resubmit_flag == 0) {
-                        mirror_fwd.apply();
-                        //}
+                    if(hdr.ipv4.dstAddr == CONTROLLER_ADDRESS && hdr.ipv4.srcAddr != CONTROLLER_ADDRESS) {
+                        if (ig_intr_md.resubmit_flag == 0) {
+                            mirror_fwd.apply();
+                        }
 
                         if (meta.do_ing_mirroring == true) {
                             set_mirror_type();
@@ -162,14 +183,19 @@ control Ingress(
                             set_normal_pkt();
                         }
                     }
-                } else if(hdr.fractos.cmd == fractos_cmd_type.Nop) {
-                    // handle Nop Case
-                    cap_table.apply();
-                } else if(hdr.fractos.cmd == fractos_cmd_type.RequestInvoke) {
-                    cap_table.apply();    
-                } else if(hdr.fractos.cmd == fractos_cmd_type.MemoryCopy) {
-                    cap_table.apply();    
-                }
+                } 
+                // else if(hdr.fractos.cmd == fractos_cmd_type.RequestInvoke) {
+                //     if (hdr.request_invoke.numberContinutions != 0) {
+                //         // continuations might be implicit delegations.
+                //         // Mirror to_control-plane
+                //         set_md(64, true, 128, true, 128);
+                //         if (meta.do_ing_mirroring == true) {
+                //             set_mirror_type();
+                //         } else {
+                //             set_normal_pkt();
+                //         }
+                //     }
+                // }
             }
             routing.apply();
         }  
