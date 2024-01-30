@@ -113,9 +113,12 @@ control Ingress(
         meta.drop = true;
 
         // ig_tm_md.bypass_egress = 0; // TODO change dest for sender to notify sender
-
-        ig_tm_md.ucast_egress_port = 64; // packet gen port on tofino 1
+        ig_tm_md.ucast_egress_port = ig_intr_md.ingress_port;
         //TODO send msg via packet generator to originating host
+        hdr.ipv4.dstAddr = hdr.ipv4.srcAddr;
+        hdr.fractos.cmd = fractos_cmd_type.CapInvalid;        
+        hdr.udp.checksum = 0;
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
 
@@ -162,7 +165,7 @@ control Ingress(
 
         else if(hdr.ethernet.etherType == EtherType.IPV4 && hdr.ethernet.isValid()) {
             // if cases for all packet types and
-            if ((hdr.udp.dstPort == 1234 || hdr.udp.dstPort == 2324)) {
+
                 if(hdr.fractos.cmd == fractos_cmd_type.Nop ||
                 hdr.fractos.cmd == fractos_cmd_type.RequestInvoke ||
                 hdr.fractos.cmd == fractos_cmd_type.MemoryCopy
@@ -171,18 +174,16 @@ control Ingress(
                     // handle Nop Case
                     cap_table.apply();
                 }
-
-                if(hdr.fractos.cmd == fractos_cmd_type.InsertCap) {
+                else if(hdr.fractos.cmd == fractos_cmd_type.InsertCap || hdr.fractos.cmd == fractos_cmd_type.CapInvalid) {
                     if(hdr.ipv4.dstAddr == CONTROLLER_ADDRESS && hdr.ipv4.srcAddr != CONTROLLER_ADDRESS) {
                         if (ig_intr_md.resubmit_flag == 0) {
                             mirror_fwd.apply();
                         }
 
-                        if (meta.do_ing_mirroring == true) {
-                            set_mirror_type();
-                        } else {
-                            set_normal_pkt();
-                        }
+                        set_mirror_type();
+                        // } else {
+                        //     set_normal_pkt();
+                        // }
                     }
                 } 
                 // else if(hdr.fractos.cmd == fractos_cmd_type.RequestInvoke) {

@@ -162,6 +162,11 @@ header fractos_revoke_cap_header_t {
     CapID_t cap_id;
 }
 
+header fractos_revoke_cap_invalid_t {
+    IpAddress cap_owner_ip;
+    CapID_t cap_id;
+}
+
 typedef bit<8>  pkt_type_t;
 const pkt_type_t PKT_TYPE_NORMAL = 1;
 const pkt_type_t PKT_TYPE_MIRROR = 2;
