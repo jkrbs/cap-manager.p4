@@ -141,6 +141,7 @@ header fractos_request_invoke_header_t {
     CapID_t continuations1;
     CapID_t continuations2;
     CapID_t continuations3;
+    bit<8> flags;
 }
 
 header fractos_cap_invalid_header_t {
