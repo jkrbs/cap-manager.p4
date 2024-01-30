@@ -138,6 +138,7 @@ control Ingress(
         key = {
             hdr.fractos.cap_id: exact @name("cap_id");
             hdr.ipv4.srcAddr: exact @name("src_addr");
+            hdr.udp.srcPort: exact @name("src_port");
         }
         actions = {
             capAllow_forward;

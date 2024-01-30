@@ -114,7 +114,6 @@ enum bit<32> fractos_cmd_type {
 
 struct IpAddress {
     bit<32> address;
-    bit<32> netmask;
     bit<16> port;
 }
 
