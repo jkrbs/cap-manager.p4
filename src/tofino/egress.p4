@@ -1,5 +1,4 @@
 #include "packet_types.p4"
-#include "util.p4"
 
 struct egress_metadata_t {
     bool do_ing_mirroring;  // Enable ingress mirroring
@@ -15,10 +14,8 @@ parser EgressParser(packet_in        pkt,
     /* Intrinsic */
     out egress_intrinsic_metadata_t  eg_intr_md)
 {
-    TofinoEgressParser() tofino_parser;
-
     state start {
-        tofino_parser.apply(pkt, eg_intr_md);
+        pkt.extract(eg_intr_md);
         transition parse_metadata;
     }
 
@@ -70,7 +67,7 @@ parser EgressParser(packet_in        pkt,
     }
 
     state parse_tcp {
-        transition reject;
+        transition accept;
     }
 
     state parse_udp {

@@ -51,6 +51,7 @@ parser IngressParser(packet_in      pkt,
 
     state parse_udp {
         pkt.extract(hdr.udp);
+        hdr.udp.setValid();
         transition parse_fractos_common_header;
     }
 
