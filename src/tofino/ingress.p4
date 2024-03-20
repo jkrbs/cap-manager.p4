@@ -81,12 +81,9 @@ control Ingress(
     // Cap exists and is valid
     action capAllow_forward(MacAddr_t dstAddr, MacAddr_t srcAddr, PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
-        // ig_tm_md.bypass_egress = 1;
+        ig_tm_md.bypass_egress = 1;
         hdr.ethernet.dstAddr = dstAddr;
         hdr.ethernet.srcAddr = srcAddr;
-
-        // UDP Checksums are optional. The checksum should be properly calculated in more serious implementation
-        hdr.udp.checksum = 0;
 
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
@@ -165,7 +162,7 @@ control Ingress(
 
         else if(hdr.ethernet.etherType == EtherType.IPV4 && hdr.ethernet.isValid()) {
             // if cases for all packet types and
-
+            if (hdr.udp.isValid()) {
                 if(hdr.fractos.cmd == fractos_cmd_type.Nop ||
                 hdr.fractos.cmd == fractos_cmd_type.RequestInvoke ||
                 hdr.fractos.cmd == fractos_cmd_type.MemoryCopy
@@ -200,6 +197,11 @@ control Ingress(
                 // }
             }
             routing.apply();
+        
+            // UDP Checksums are optional. The checksum should be properly calculated in more serious implementation
+            if (hdr.udp.isValid()) {
+                hdr.udp.checksum = 0;
+            }
         }  
     }
 }
